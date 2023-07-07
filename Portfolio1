@@ -1,0 +1,99 @@
+Select *
+FROM Portfolio.CovidDeath
+WHERE continent is NOT NULL;
+
+SELECT location, date, total_cases, new_cases, total_deaths, population
+FROM Portfolio.CovidDeath
+ORDER BY 1,2;
+
+-- Looking at  total cases vs total deaths
+-- Shows the likelihood of dying
+SELECT location, date, total_cases, total_deaths, (total_deaths*1.0/total_cases)*100 AS 'DeathPercent'
+FROM Portfolio.CovidDeath
+WHERE location  LIKE 'Canada'
+ORDER BY 1,2;
+
+-- Lokking at total cases vs Population
+SELECT location, date, total_cases, Population, (total_cases*1.0/Population)*100 AS 'PopPercent'
+FROM Portfolio.CovidDeath
+WHERE location LIKE 'Canada'
+ORDER BY 1,2;
+
+-- Looking at countries with infection rate
+SELECT location, Population, MAX(total_cases) AS 'HighestInfection',  
+MAX((total_cases*1.0/Population))*100 AS 'PopPercent'
+FROM Portfolio.CovidDeath
+GROUP BY Location
+ORDER BY 4 Desc;
+
+
+-- by continent
+-- showing highest death count per population
+SELECT continent, Population, MAX(cast(total_deaths as int)) AS 'HighestDeaths' 
+FROM Portfolio.CovidDeath
+WHERE continent is NOT NULL
+GROUP BY continent
+ORDER BY 3 Desc;
+
+-- GLOBAL Numbers
+SELECT location, SUM(new_cases) AS 'TOTAL_CASES', 
+SUM(cast(new_deaths as int)) AS 'TOTAL_DEATHS', 
+(SUM(cast(new_deaths as int))*1.0/SUM(new_cases))*100 AS 'DeathPercent'
+FROM Portfolio.CovidDeath
+WHERE continent is NOT NULL
+--GROUP BY date
+ORDER BY 1,2;
+
+WITH PopVac (continent, location, date, population, new_vaccinations, rolling_vac)
+AS
+(
+-- population vs vaccination
+SELECT death.continent, death.location, death.date, death.population, vac.new_vaccinations
+, SUM(cast(new_vaccinations as int)) OVER (partition by death.location 
+ORDER BY death.location, death.date) AS 'rollingVac'
+FROM portfolio.CovidDeath death
+JOIN portfolio.CovidVaccination vac
+    ON death.location = vac.location
+    AND death.date = vac.date
+WHERE death.continent is NOT NULL
+)
+SELECT *
+FROM PopVac;
+--ORDER BY 2,3
+
+-- Table
+Drop Table if exists percentPopulationVac ;
+CREATE TABLE percentPopulationVac 
+(
+continent nvarchar(255),
+location  nvarchar(255),
+Date datetime,
+Population int,
+new_vaccinations numeric
+rolling_vaccinated
+);
+
+INSERT INTO percentPopulationVac
+SELECT death.continent, death.location, death.date, death.population, vac.new_vaccinations
+,SUM(cast(new_vaccinations as int)) OVER (partition by death.location 
+ORDER BY death.location, death.date)
+FROM portfolio.CovidDeath death
+JOIN portfolio.CovidVaccination vac
+    ON death.location = vac.location
+    AND death.date = vac.date
+WHERE death.continent is NOT NULL;
+
+-- VIEW
+Create VIEW populationDeaths AS
+SELECT continent, Population, MAX(cast(total_deaths as int)) AS 'HighestDeaths' 
+FROM Portfolio.CovidDeath
+WHERE continent is NOT NULL
+GROUP BY continent;
+
+
+
+
+
+
+
+
